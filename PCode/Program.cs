@@ -244,4 +244,44 @@ namespace PCode
             mcast = 128
         }
     }
+    public class InstrTemplate
+    {
+        public string Name;
+        public byte Length, DestBus;
+        public byte Opcode, ValidModMask;
+
+        public InstrTemplate(string name, byte length, byte dest, byte op, byte mMask)
+        {
+            Name = name;
+            Length = length;
+            DestBus = dest;
+            Opcode = op;
+            ValidModMask = mMask;
+        }
+        public bool IsValidMod(byte mods)
+        {
+            return (ValidModMask ^ mods) == 0;
+        }
+        public bool InstMatchTemp(Instruction instr) // Instruction Matches this Template
+        {
+            return (instr.op == Opcode) && ((instr.mod & ~ValidModMask) == 0); // also need to check length
+        }
+    }
+    public struct Instruction
+    {
+        public byte op, mod, addrL, addrH, opAL, opAH, opBL, opBH;
+        public Instruction(params byte[] args)
+        {
+            byte[] nArgs = new byte[8];
+            if (args.Length == 8) args.CopyTo(nArgs, 0);
+            op = nArgs[0];
+            mod = nArgs[1];
+            addrL = nArgs[2];
+            addrH = nArgs[3];
+            opAL = nArgs[4];
+            opAH = nArgs[5];
+            opBL = nArgs[6];
+            opBH = nArgs[7];
+        }
+    }
 }

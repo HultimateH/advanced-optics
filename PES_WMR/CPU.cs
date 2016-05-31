@@ -130,13 +130,21 @@ namespace PES_WMR
         }
         private void DumpFile(byte[] bytes)
         {
+            DateTime dumpTime = DateTime.UtcNow;
+            string timeFormat = "yyyyMMdd-HHmmss"; // eg. PESWMR-Dump-20160523-121734 for 12:17.34 23/05/16
+            string fileName = "PESWMR-Dump-" + dumpTime.ToString(timeFormat) + ".pbin";
 
+            using (FileStream file = File.OpenWrite(fileName))
+            {
+                file.Write(MagicBytes, 0, MagicBytes.Length);
+                file.Write(bytes, 0, bytes.Length);
+            }
         }
-        //private short busAddr, busData;
         public DataBus Bus;
+        
         private short Compile2Bytes(byte b1, byte b2)
         {
-            return (short)(b1 << 8 + b2);
+            return (short)((b1 << 8) | b2);
         }
         private byte[] Parse4ShortsToBytes(short[] shorts) // just goes from memory (short[]) to file? (byte[])
         {
@@ -394,17 +402,65 @@ namespace PES_WMR
                     byte[] saveBytes = new byte[2*opA+2];
                     for (int i = 0; i < opA+1; i++)
                     {
-                        saveBytes[i] = (byte)(useMem[addr + i] >> 2);          // big end
+                        saveBytes[i] = (byte)(useMem[addr + i] >> 8);          // big end
                         saveBytes[i + 1] = (byte)(useMem[addr + i] & 0xFF);    // little end
                     }
                     DumpFile(saveBytes);
                     break;
                 case Opcodes.load:
-                    LoadFile("", addr, opA);
+                    LoadFile("PESWMR-File-" + opB.ToString("x4") + ".pbin", addr, opA); // eg. opB = 002a -> PESWMR-File-002a.pbin
+                    break;
+                case Opcodes.swap:
+                    short a = useMem[addr], b = useMem[opA & 0xFFFF];
+                    useMem[addr] = b; useMem[opA & 0xFFFF] = a;
+                    break;
+                case Opcodes.set:
+                    useMem[addr] = opA; // functionally equivalent to copy, but .range is faster
                     break;
             }
         }
+
+        private class LoopbackRef : IHighBandwidthBusDevice
+        {
+            private DataBus bus;
+            private short[] mem;
+            public short busID
+            {
+                get
+                {
+                    return 0x0000;
+                }
+            }
+            public LoopbackRef (DataBus bus, short[] mem)
+            {
+                this.bus = bus;
+                this.mem = mem;
+            }
+            public void PullChunk(short addr, short offset)
+            {
+                for (int i = 0; i <= offset; i++)
+                {
+                    bus.Rx.Push(mem[addr + i]); // read from addr to addr+offset (inclusive). PullChunk(addr, 0) reads 1 address.
+                }
+            }
+            public void PushChunk(short addr, short offset)
+            {
+                for (int i = 0; i <= offset; i++)
+                {
+                    mem[addr + i] = bus.Tx.Pop();
+                }
+            }
+
+            public void Update(bool clk)
+            {
+                if (!clk) return;
+                byte nextA = (byte)(bus.Tx.Peek() >> 8);    // assuming an instruction was sent, nextA is the opcode (oommrrrraaaabbbb)
+                byte nextB = (byte)(bus.Tx.Peek() & 0xFF);  
+                if (nextA == 0x22 || nextA == 0x23 || nextA == 0x00) return; // WIP
+            }
+        }
     }
+    
     public enum Opcodes : byte
     {
         // no operation
