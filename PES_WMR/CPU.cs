@@ -558,4 +558,34 @@ namespace PES_WMR
         public Opmods opmod;
         public short operandStore, operandA, operandB;
     }
+    public static class CPUUtil
+    {
+        // returns true if matches contains toMatch. used for checking bytes against valid templates.
+        public static bool MatchInSet<T>(T toMatch, params T[] matches) where T : IComparable<T>
+        {
+            for (int i = 0; i < matches.Length; i++)
+            {
+                if (toMatch.CompareTo(matches[i]) == 0) return true;
+            }
+            return false;
+        }
+        // compiles 2 bytes into a short
+        public static short CompileBytesToShort(byte upper, byte lower)
+        {
+            return (short)((upper << 8) | lower);
+        }
+        // compiles a set of bytes into a set of shorts. appends 0x00 if number of input bytes is odd.
+        // so eg. 0a 23 15 09 ff -> 0a23 1509 ff00
+        public static short[] CompileBytesToShort(byte[] bytes)
+        {
+            byte[] tBytes = ((bytes.Length % 2) == 0) ? new byte[bytes.Length] : new byte[bytes.Length + 1];
+            bytes.CopyTo(tBytes, 0);
+            short[] shorts = new short[tBytes.Length / 2];
+            for (int i = 0; i < shorts.Length; i++)
+            {
+                shorts[i] = CompileBytesToShort(tBytes[i * 2], tBytes[i * 2 + 1]);
+            }
+            return shorts;
+        }
+    }
 }
