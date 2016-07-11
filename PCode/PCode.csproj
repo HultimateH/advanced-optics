@@ -75,6 +75,7 @@
   <ItemGroup>
     <Compile Include="DataFormats.cs" />
     <Compile Include="InstructionParser.cs" />
+    <Compile Include="NewInstructionParser.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

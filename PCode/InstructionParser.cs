@@ -140,10 +140,9 @@ namespace PCode
                 #endregion
 
                 Instr instr = OpDefs.Find(x => x.name == str[0]);
-                // replace symbols with proper addresses
-
                 if (instr != null)
                 {
+                    instr.variation = PCodeUtil.VariationWithLiterals(instr.variation, str[2], str[3], symbols);
                     locMem[memPos++] = (short)(instr.code << 8 | instr.variation);
                     locMem[memPos++] = PCodeUtil.FindSymbolOrParse(symbols, str[1]);
                     locMem[memPos++] = PCodeUtil.FindSymbolOrParse(symbols, str[2]);
@@ -194,7 +193,6 @@ namespace PCode
                     );
                 j += 8;
             }
-            
             Console.WriteLine("\n\nDone. Press any key to continue...");
             Console.ReadKey();
         }
@@ -234,6 +232,7 @@ namespace PCode
         public static short HexParse(string s)
         {
             short x;
+            string s2 = s.TrimStart('$'); // literal
             if (short.TryParse(s, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out x)) return x;
             else return 0x0000;
         }
@@ -273,11 +272,33 @@ namespace PCode
                 else if (s[i] == '\\' && !canSplit && !nextLiteral) // only works in strings
                 {
                     nextLiteral = true; // just like how C# handles \ in strings
+                    continue;
                 }
                 else if (!canSplit && nextLiteral)
                 {
-                    strB.Append(s[i]);
+                    #region Escaped chars
+                    switch (s[i])
+                    {
+                        case 'a':
+                            strB.Append('\a'); break;
+                        case 'b':
+                            strB.Append('\b'); break;
+                        case 'f':
+                            strB.Append('\f'); break;
+                        case 'n':
+                            strB.Append('\n'); break;
+                        case 'r':
+                            strB.Append('\r'); break;
+                        case 't':
+                            strB.Append('\t'); break;
+                        case 'v':
+                            strB.Append('\v'); break;
+                        default:
+                            strB.Append(s[i]); break;
+                    }
+                    #endregion
                     nextLiteral = false;
+                    continue;
                 }
                 else if (s[i] == '"' && !nextLiteral)
                 {
@@ -304,6 +325,43 @@ namespace PCode
         {
             Sym sym = symbols.Find(x => x.name == s); // sym is null if not found in the list
             return (short?)sym?.addr ?? HexParse(s); // the .? prevents an NRE, and the ?? makes the function just parse s if sym is null
+        }
+        public static byte VariationWithLiterals(byte v, string s1, string s2, List<Sym> symbols)
+        {
+            Sym x1 = symbols.Find(a => a.name == s1);
+            Sym x2 = symbols.Find(a => a.name == s2);
+            byte b1 = 0, b2 = 0;
+            if (x1 == null && !string.IsNullOrWhiteSpace(s1) && s1[0] == '$') // true if s1 isn't a symbol, isn't null/empty/whitespace and its first char is '$'
+            {
+                b1 = 1 << 7;
+            }
+            if (x2 == null && !string.IsNullOrWhiteSpace(s2) && s2[0] == '$')
+            {
+                b2 = 1 << 6;
+            }
+            return (byte)(v | b1 | b2);
+        }
+
+        // error handling
+        public static void FatalError(string s)
+        {
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.DarkRed;
+            Console.WriteLine("---------------");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write("FATAL COMPILE ERROR! ");
+            Console.ForegroundColor = ConsoleColor.DarkRed;
+            Console.WriteLine("Details are below:");
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.WriteLine(s);
+            Console.ForegroundColor = ConsoleColor.DarkRed;
+            Console.WriteLine("---------------");
+            Console.ForegroundColor = ConsoleColor.Gray;
+            Console.WriteLine("Your data has not been modified, and you may now safely close the compiler.");
+            Console.ForegroundColor = ConsoleColor.DarkRed;
+            Console.WriteLine("Press any key to quit.");
+            Console.ReadKey();
+            Environment.Exit(0);
         }
     }
 }

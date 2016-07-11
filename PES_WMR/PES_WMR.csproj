@@ -69,6 +69,7 @@
   <ItemGroup>
     <Compile Include="CPU.cs" />
     <Compile Include="CPUExtension.cs" />
+    <Compile Include="newCPU.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Wireless.cs" />
   </ItemGroup>
