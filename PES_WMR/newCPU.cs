@@ -12,28 +12,33 @@ namespace PES_WMR
         /*  
          *  New PESWMR stuff
          *  To start, memory is represented as a MemoryStream (allows for fast copying, easy read/write etc.)
-         *  This also means that under the hood, one address refers to 2 bytes in big-endian format (0xAA 0xBB) rather than a short (0xAABB)
-         *  Memory was found to total 128KiB I think, not something else
+         *  Addresses are 2 bytes (0xAA 0xBB); they point to the start byte of sets of information (float, vector, int, etc.)
+         *  Memory probably should be byte-addressable; would be annoying to deal with everything in bytes & shorts simultaneously
          *  
-         *  Memory:     120KiB usable, 8KiB reserved for bootloader etc.
-         *  Wireless:   128KiB public (chunks may be sent directly through p2p connections)
+         *  Memory:     63KiB usable in boot segment, 1KiB reserved for bootloader, device constants etc.
+         *      segments can be switched by simply saving & loading to file (basically paging).
+         *  Wireless:   64KiB public (chunks may be sent directly through p2p connections)
          *  
          *  Instruction format:
-         *      00 01 02 03 04 05 06 07
-         *      oo mm aa aa bb bb cc cc
+         *      00 01 02 03 04 05 06
+         *      oo aa aa bb bb cc cc
+         *  
          *  Where:
          *      oo      - opcode
-         *      mm      - variation
          *      aaaa    - operand A (usually address/destination/etc.)
          *      bbbb    - operand B
          *      cccc    - operand C
-         *  Instructions are of fixed length (makes it easier to parse stuff); missing/blank/etc. operands are replaced with 0000 when compiling
-         *  Invalid instructions are ignored? tossed? treated as potentially fatal errors? o_O
+         *  Any time the instruction doesn't need 3 operands, the extras should be omitted (otherwise they'd be parsed as the start of the next instruction!)
+         *  Instructions are of variable width after all.
          *  
          */
 
         public MemoryStream localMem;
         public static MemoryStream bootloader;
 
+    }
+    public class Instr
+    {
+        public byte op, flags, length;
     }
 }

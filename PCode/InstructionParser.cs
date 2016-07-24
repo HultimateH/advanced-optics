@@ -341,17 +341,31 @@ namespace PCode
             }
             return (byte)(v | b1 | b2);
         }
+        public static void ColourText(string s, byte colour)
+        {
+            // ref for colours:
+            /*
+             * 0: black     8: grey
+             * 1: blue      9: light blue
+             * 2: green     A: light green
+             * 3: aqua      B: light aqua
+             * 4: red       C: light red
+             * 5: purple    D: light purple
+             * 6: yellow    E: light yellow
+             * 7: white     F: bright white
+             */
 
+            Console.BackgroundColor = (ConsoleColor)(colour >> 4);
+            Console.ForegroundColor = (ConsoleColor)(colour & 0xF);
+            Console.Write(s);
+        }
         // error handling
         public static void FatalError(string s)
         {
             Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.DarkRed;
-            Console.WriteLine("---------------");
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.Write("FATAL COMPILE ERROR! ");
-            Console.ForegroundColor = ConsoleColor.DarkRed;
-            Console.WriteLine("Details are below:");
+            ColourText("---------------\n", 0x04);
+            ColourText("FATAL COMPILE ERROR! \n", 0x0C);
+            ColourText("Details are below:\n", 0x04);
             Console.ForegroundColor = ConsoleColor.White;
             Console.WriteLine(s);
             Console.ForegroundColor = ConsoleColor.DarkRed;

@@ -74,7 +74,8 @@ namespace AdvancedLaserBlock
             .NeededResources(new List<NeededResource>())
             .AddingPoints(new List<AddingPoint> {
                 new BasePoint(false, true).Motionable(false,false,false).SetStickyRadius(0.5f)});
-        protected Block diffuser = new Block()
+        // diffuser is obsolete, just keeping code for now for posterity
+        /*protected Block diffuser = new Block()
             .ID(780)
             .BlockName("Diffuser")
             .Obj(new List<Obj> { new Obj("MetalCube.obj", "OpticBlockTexture2.png",
@@ -92,15 +93,15 @@ namespace AdvancedLaserBlock
             .NeededResources(new List<NeededResource>())
             .AddingPoints(new List<AddingPoint> {
                 new BasePoint(false, true).Motionable(false,false,false).SetStickyRadius(0.5f)});
-
+                */
         public override void OnLoad()
         {
             LoadBlock(laser);
             LoadBlock(optics);
-            LoadBlock(diffuser);  // The diffuser (laser-based floodlight) comes in v4.
+            //LoadBlock(diffuser);  // The diffuser (laser-based floodlight) comes in v4.
 
             //Game.OnSimulationToggle += ClearWirelessFrequencies;
-            UnityEngine.Object.DontDestroyOnLoad(MulticastHandler.Instance.gameObject);
+            //UnityEngine.Object.DontDestroyOnLoad(MulticastHandler.Instance.gameObject);
             /*UnityEngine.Object.DontDestroyOnLoad(RaycastHandler.Instance.gameObject);
 
             // Configuration

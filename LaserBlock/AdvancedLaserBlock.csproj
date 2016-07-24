@@ -58,7 +58,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="BlockLoader">
-      <HintPath>..\..\..\..\Besiege\Besiege_Data\Mods\BlockLoader.dll</HintPath>
+      <HintPath>..\..\..\BesiegeModding\Besiege\Besiege_Data\Mods\BlockLoader.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -92,14 +92,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MulticastHandler.cs" />
-    <Compile Include="MulticastTag.cs" />
     <Compile Include="DiffuserBlock.cs" />
     <Compile Include="LaserBlock.cs" />
     <Compile Include="LaserHandler.cs" />
     <Compile Include="Mod.cs" />
     <Compile Include="NewLaserBlock.cs" />
-    <Compile Include="MulticastSystem.cs" />
     <Compile Include="NewOpticsBlock.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RaycastHandler.cs" />

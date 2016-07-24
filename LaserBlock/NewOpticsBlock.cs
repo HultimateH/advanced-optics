@@ -29,37 +29,24 @@ namespace AdvancedLaserBlock
             */
 
         protected MMenu OpticModeMenu;                      // Switches between optical modes (glass, mirror, redirection, filter, sensor)
-        protected MMenu MulticastModeMenu;                  // Switches between multicast modes (off, or, and, xor)
         protected MToggle InvertFilterToggle;               // In filter mode, switches from whitelist to blacklist.
-        protected MToggle InvertMulticastToggle;            // In multicast mode, applies NOT.
         protected MColourSlider OpticFilterSlider;          // If set to filter/multicast, this dictates which colours are let through
-        protected MColourSlider MulticastFreqSlider;        // Multicasting frequency. Used for both send/recieve
 
         public int OpticalMode;
         private List<LaserHandler> beamIn = new List<LaserHandler>();
-        private MulticastTag mTag;
         public override void SafeAwake()
         {
-            OpticModeMenu = AddMenu("opticMode", 0, new List<string>() { "Glass", "Mirror", "Redirection", "Filter", "Sensor" });
-            MulticastModeMenu = AddMenu("multicastMode", 0, new List<string>() { "Off", "OR", "AND", "XOR" });
+            OpticModeMenu = AddMenu("opticMode", 0, new List<string>() { "Glass", "Mirror", "Redirection", "Filter" });
             OpticFilterSlider = AddColourSlider("Whitelist Filter", "opticFilter", Color.red);
-            MulticastFreqSlider = AddColourSlider("Multicast Frequency", "multicastFrequency", Color.red);
             InvertFilterToggle = AddToggle("Invert Filter", "invertFilter", false);
-            InvertMulticastToggle = AddToggle("Invert Operator", "invertMulticast", false);
 
             OpticModeMenu.ValueChanged += CycleOpticMode;
-            MulticastModeMenu.ValueChanged += CycleMulticastMode;
             InvertFilterToggle.Toggled += SwitchInvertFilterName;
-            InvertMulticastToggle.Toggled += SwitchInvertMulticastNames;
-            mTag = gameObject.AddComponent<MulticastTag>();
         }
         private void HideEverything()
         {
-            MulticastModeMenu.DisplayInMapper = false;
             OpticFilterSlider.DisplayInMapper = false;
-            MulticastFreqSlider.DisplayInMapper = false;
             InvertFilterToggle.DisplayInMapper = false;
-            InvertMulticastToggle.DisplayInMapper = false;
         }
         private void SwitchInvertFilterName(bool isActive)
         {
@@ -72,23 +59,7 @@ namespace AdvancedLaserBlock
                 OpticFilterSlider.DisplayName = "Whitelist Filter";
             }
         }
-        private void SwitchInvertMulticastNames(bool isActive)
-        {
-            if (isActive)
-            {
-                MulticastModeMenu.Items = new List<string>() { "Off", "NOR", "NAND", "XNOR" };
-            }
-            else
-            {
-                MulticastModeMenu.Items = new List<string>() { "Off", "OR", "AND", "XOR" };
-            }
-            // current selection name doesn't change until user picks different item
-            MulticastModeMenu.DisplayName = MulticastModeMenu.Items[MulticastModeMenu.Value];
-        }
-        private void CycleMulticastMode(int value)
-        {
-
-        }
+        
         private void CycleOpticMode(int value)
         {
             HideEverything();
@@ -96,17 +67,12 @@ namespace AdvancedLaserBlock
             {
                 case 3: // filter
                     OpticFilterSlider.DisplayInMapper = true;
-                    MulticastFreqSlider.DisplayInMapper = true;     // Multicasting stuff is here because A. mode menu is recieving modes
-                    MulticastModeMenu.DisplayInMapper = true;       // and B. how else does one do any more fancy stuff? Lasers aren't enough.
                     InvertFilterToggle.DisplayInMapper = true;
-                    InvertMulticastToggle.DisplayInMapper = true;
                     SwitchInvertFilterName(InvertFilterToggle.IsActive);
-                    SwitchInvertMulticastNames(InvertMulticastToggle.IsActive);
                     break;
                 case 4: // sensor
-                    OpticFilterSlider.DisplayInMapper = true;       // Need the filter slider here because the multicast mode should be able to detect
-                    MulticastFreqSlider.DisplayInMapper = true;     // just one, or all but one colour.
-                    InvertFilterToggle.DisplayInMapper = true;      // Invert Filter toggle serves the same purpose here as well.
+                    OpticFilterSlider.DisplayInMapper = true;
+                    InvertFilterToggle.DisplayInMapper = true;
                     SwitchInvertFilterName(InvertFilterToggle.IsActive);
                     break;
             }
@@ -116,46 +82,14 @@ namespace AdvancedLaserBlock
         {
             if (beamIn.Contains(lh)) return;
             beamIn.Add(lh);
-            UpdateTagState();
-            Debug.Log("added lh");
+            //Debug.Log("added lh");
         }
         public void unsetLaserHit(LaserHandler lh)
         {
             if (beamIn.Contains(lh))
             {
                 beamIn.Remove(lh);
-                UpdateTagState();
-                Debug.Log("removed lh");
-            }
-        }
-        public void UpdateTagState()
-        {
-            if (OpticalMode != 4) return; // not a sensor? not a chance.
-            Color colour = OpticFilterSlider.Value;
-            foreach (LaserHandler lh in beamIn)
-            {
-                if (GetFilterMatch(lh.colour))
-                {
-                    mTag.onOff = true;
-                    mTag.Send();
-                    return;
-                }
-            }
-            mTag.onOff = false;
-            mTag.Send();
-            return;
-            // no need to update tag state for filter mode - multicast handler does that for us
-        }
-        private void doRegisterTag()
-        {
-            if (OpticalMode == 3 && MulticastModeMenu.Value != 0)
-            {
-                mTag.RegisterReciever(MulticastFreqSlider.Value,
-                    (MulticastHandler.BitOp)MulticastModeMenu.Value - 1);
-            }
-            else if (OpticalMode == 4)
-            {
-                mTag.RegisterTransmitter(MulticastFreqSlider.Value);
+                //Debug.Log("removed lh");
             }
         }
         public bool GetFilterMatch(Color colour)
@@ -164,24 +98,9 @@ namespace AdvancedLaserBlock
                 return colour != OpticFilterSlider.Value;   // filter inverted
             else return colour == OpticFilterSlider.Value;  // filter not inverted
         }
-        public bool GetMFilterMatch(Color colour)
-        {
-            if (MulticastModeMenu.Value == 0) return GetFilterMatch(colour);
-            // defining stuff...
-            // filter is ACTIVE if mTag.onOff ^ InvertMulticastToggle.IsActive == true
-            // filter is transparent to colour if active && GetFilterMatch(colour) == true, OR
-            // filter is transparent to everything if INACTIVE.
-            else
-            {
-                if (mTag.onOff ^ InvertMulticastToggle.IsActive)
-                    return GetFilterMatch(colour); // filter active
-                else return true; // filter inactive
-            }
-        }
         protected override void OnSimulateStart()
         {
             OpticalMode = OpticModeMenu.Value;
-            doRegisterTag();
         }
         protected override void OnSimulateUpdate()
         {
@@ -189,8 +108,7 @@ namespace AdvancedLaserBlock
         }
         protected override void OnSimulateExit()
         {
-            mTag.Reset();   // multicast handler will not loop through each tag and reset them, so you have to do it yourself.
-                            // good thing each block with this functionality only has one.
+
         }
         public override void OnLoad(XDataHolder data)
         {

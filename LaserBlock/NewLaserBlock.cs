@@ -13,10 +13,8 @@ namespace AdvancedLaserBlock
         protected MMenu LaserEditModeMenu;
         protected MMenu LaserAbilityModeMenu;
         protected MMenu LaserCosmeticModeMenu;
-        protected MMenu LaserMulticastModeMenu;
 
         protected MColourSlider LaserColourSlider;
-        protected MColourSlider LaserMulticastFrequencySlider;
 
         protected MSlider LaserFocusSlider;
         protected MSlider LaserLengthSlider;
@@ -33,19 +31,16 @@ namespace AdvancedLaserBlock
 
         // Block-specific stuff
         private LaserHandler laserHandler;
-        private MulticastTag mTag;
         private bool laserOnOff;
 
         public override void SafeAwake()
         {
             // Setup config window
-            LaserEditModeMenu = AddMenu("laserEditMode", 0, new List<string>() { "Ability", "Cosmetic", "Multicast" });
+            LaserEditModeMenu = AddMenu("laserEditMode", 0, new List<string>() { "Ability", "Cosmetic" });
             LaserAbilityModeMenu = AddMenu("laserAbilityMode", 0, new List<string>() { "Fire", "Kinetic", "Freeze", "Cosmetic", "Tag" });
             LaserCosmeticModeMenu = AddMenu("laserCosmeticMode", 0, new List<string>() { "Off", "Trig", "Inv Trig", "Lightning" });
-            LaserMulticastModeMenu = AddMenu("laserMulticastMode", 0, new List<string>() { "Off", "OR", "AND", "XOR" });
 
             LaserColourSlider = AddColourSlider("Beam Colour", "laserColour", Color.red);
-            LaserMulticastFrequencySlider = AddColourSlider("Multicast Frequency", "laserMulticastFreq", Color.red);
 
             LaserFocusSlider = AddSlider("Laser Focus", "laserFocus", 0.08f, 0.08f, 0.5f);
             LaserLengthSlider = AddSlider("Laser Length", "laserLength", 200f, 0.1f, 500f);
@@ -64,8 +59,6 @@ namespace AdvancedLaserBlock
             LaserEditModeMenu.ValueChanged += CycleEditMode;
             LaserAbilityModeMenu.ValueChanged += CycleAbilityMode;
             LaserCosmeticModeMenu.ValueChanged += CycleCosmeticMode;
-            LaserMulticastModeMenu.ValueChanged += CycleMulticastMode;
-            mTag = gameObject.AddComponent<MulticastTag>();
         }
 
         // cycle through settings etc.
@@ -73,10 +66,8 @@ namespace AdvancedLaserBlock
         {
             LaserAbilityModeMenu.DisplayInMapper = false;
             LaserCosmeticModeMenu.DisplayInMapper = false;
-            LaserMulticastModeMenu.DisplayInMapper = false;
 
             LaserColourSlider.DisplayInMapper = false;
-            LaserMulticastFrequencySlider.DisplayInMapper = false;
 
             LaserFocusSlider.DisplayInMapper = false;
             LaserLengthSlider.DisplayInMapper = false;
@@ -98,9 +89,6 @@ namespace AdvancedLaserBlock
                     break;
                 case 1:
                     CycleCosmeticMode(LaserCosmeticModeMenu.Value);
-                    break;
-                case 2:
-                    CycleMulticastMode(LaserMulticastModeMenu.Value);
                     break;
             }
         }
@@ -133,27 +121,11 @@ namespace AdvancedLaserBlock
                 LaserCosmeticAmplitudeSlider.DisplayInMapper = true;
             }
         }
-        private void CycleMulticastMode(int value)
-        {
-            HideEverything();
-            LaserMulticastModeMenu.DisplayInMapper = true;
-            LaserFastUpdateToggle.DisplayInMapper = true;
-            LaserOnOffToggle.DisplayInMapper = true;
-            if (value != 0)
-            {
-                LaserMulticastFrequencySlider.DisplayInMapper = true;
-            }
-        }
         
         protected override void OnSimulateStart()
         {
             laserOnOff = LaserOnOffToggle.IsActive;
             laserHandler = new LaserHandler(transform, LaserColourSlider.Value);
-            if (LaserMulticastModeMenu.Value != 0)
-            {
-                mTag.RegisterReciever(LaserMulticastFrequencySlider.Value,
-                    (MulticastHandler.BitOp)LaserMulticastModeMenu.Value - 1);
-            }
             laserHandler.SetBeamWidth(LaserFocusSlider.Value);
             laserHandler.skipTickLimit = LaserFastUpdateToggle.IsActive;
             laserHandler.beamRayLength = LaserLengthSlider.Value;
@@ -165,7 +137,7 @@ namespace AdvancedLaserBlock
             {
                 laserOnOff ^= laserOnOff;
             }
-            laserHandler.onOff = laserOnOff ^ mTag.onOff; // ALU operations are blazingly-fast so doing this every tick is fine
+            laserHandler.onOff = laserOnOff; // ALU operations are blazingly-fast so doing this every tick is fine
             laserHandler.CheckIfNeedsUpdate(); // better to optimise more expensive stuff instead (eg. trig functions)
 
             //doPassiveAbility();
@@ -177,8 +149,6 @@ namespace AdvancedLaserBlock
             {
                 FireTag fT = rH.transform.GetComponent<FireTag>();
                 fT.Ignite();
-                if (fT.bombCode) fT.bombCode.Explodey();
-                if (fT.grenadeCode) fT.grenadeCode.Explode();
                 if (fT.glowCode) fT.glowCode.Glow();
             }
             else if (rH.transform.GetComponent<BreakOnForceNoSpawn>()) // explode stuff
@@ -211,7 +181,6 @@ namespace AdvancedLaserBlock
         }
         protected override void OnSimulateExit()
         {
-            mTag.Reset();
         }
         public override void OnLoad(XDataHolder data)
         {

@@ -130,7 +130,7 @@ namespace AdvancedLaserBlock
             lastSensorUpdate.AddRange(sensorUpdate);
             sensorUpdate.Clear();
             BeamHitAnything = false;
-            while (raycastCount < 20) // 20 is actually really small
+            while (raycastCount < 80) // 20 is actually really small
             {
                 raycastCount++;
                 if (Physics.Raycast(lastPoint, lastDir, out rayHit, beamRayLength, layerMask))
@@ -179,7 +179,7 @@ namespace AdvancedLaserBlock
                                 beamDirections.Add(lastDir);
                                 break;
                             case 3:
-                                if (ob.GetMFilterMatch(colour)) // test for transparency
+                                if (ob.GetFilterMatch(colour)) // test for transparency
                                 {
                                     lastPoint = rayHit.point + lastDir * 0.1f;
                                     beamPoints.Add(lastPoint);
