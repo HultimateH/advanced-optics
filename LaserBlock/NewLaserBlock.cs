@@ -97,6 +97,8 @@ namespace AdvancedLaserBlock
             HideEverything();
             LaserAbilityModeMenu.DisplayInMapper = true;
             LaserLengthSlider.DisplayInMapper = true;
+            LaserFastUpdateToggle.DisplayInMapper = true;
+            LaserOnOffToggle.DisplayInMapper = true;
             if (value == 1)
             {
                 LaserKineticUpDownSlider.DisplayInMapper = true;
@@ -135,21 +137,20 @@ namespace AdvancedLaserBlock
         {
             if (LaserOnOffKey.IsPressed)
             {
-                laserOnOff ^= laserOnOff;
+                laserOnOff ^= true;
             }
             laserHandler.onOff = laserOnOff; // ALU operations are blazingly-fast so doing this every tick is fine
             laserHandler.CheckIfNeedsUpdate(); // better to optimise more expensive stuff instead (eg. trig functions)
 
-            //doPassiveAbility();
+            doPassiveAbility();
         }
         
-        protected void IgniteAndBreak(RaycastHit rH)
+        protected void IgniteAndBreak(LaserHandler.RHInfo rH)
         {
             if (rH.transform.GetComponent<FireTag>()) // ignite
             {
                 FireTag fT = rH.transform.GetComponent<FireTag>();
                 fT.Ignite();
-                if (fT.glowCode) fT.glowCode.Glow();
             }
             else if (rH.transform.GetComponent<BreakOnForceNoSpawn>()) // explode stuff
                 rH.transform.GetComponent<BreakOnForceNoSpawn>().BreakExplosion(400f, rH.point, 10f, 0f);
@@ -163,7 +164,7 @@ namespace AdvancedLaserBlock
         private void doPassiveAbility()
         {
             if (!laserHandler.BeamHitAnything) return;
-            RaycastHit rH = laserHandler.BeamLastHit;
+            LaserHandler.RHInfo rH = laserHandler.rHInfo;
             switch (LaserAbilityModeMenu.Value)
             {
                 case 0: // fire

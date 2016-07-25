@@ -15,7 +15,7 @@ namespace AdvancedLaserBlock
         public override string Name { get { return "advancedLasers"; } }
         public override string DisplayName { get { return "Advanced Laser Mod"; } }
         public override string Author { get { return "Pixali"; } }
-        public override Version Version { get { return new Version(1, 1, 3, 0); } }
+        public override Version Version { get { return new Version(1, 1, 3, 1); } }
 
         // Raycast optimisation options
         /*

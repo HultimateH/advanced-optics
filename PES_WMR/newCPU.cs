@@ -11,7 +11,8 @@ namespace PES_WMR
     {
         /*  
          *  New PESWMR stuff
-         *  To start, memory is represented as a MemoryStream (allows for fast copying, easy read/write etc.)
+         *  Screw streams. everything's fixed size anyway, so why stick with that sort of overhead & pure difficulty? anyways, K.I.S.S.
+         *  Then again, the easy copying etc. is really nice...
          *  Addresses are 2 bytes (0xAA 0xBB); they point to the start byte of sets of information (float, vector, int, etc.)
          *  Memory probably should be byte-addressable; would be annoying to deal with everything in bytes & shorts simultaneously
          *  
@@ -33,12 +34,21 @@ namespace PES_WMR
          *  
          */
 
-        public MemoryStream localMem;
-        public static MemoryStream bootloader;
+        public byte[] localMem;
+        public static byte[] bootloader;
+
+        public void Tick()
+        {
+
+        }
 
     }
     public class Instr
     {
         public byte op, flags, length;
+    }
+    public class Memory
+    {
+        public const ushort rwMem = 0xEFFF; // ??? not sure what I'm doing just yet
     }
 }

@@ -8,6 +8,19 @@ namespace AdvancedLaserBlock
 {
     public class LaserHandler
     {
+        public struct RHInfo
+        {
+            public Vector3 point;
+            public Transform transform;
+            public Collider collider;
+            public RHInfo (Vector3 v, Transform t, Collider c)
+            {
+                point = v;
+                transform = t;
+                collider = c;
+            }
+        }
+
         private GameObject GOContainer;
         private LineRenderer lr;                // laser beam
         private List<Vector3> beamDirections;   // the transforms of hit objects
@@ -33,7 +46,7 @@ namespace AdvancedLaserBlock
 
         // need to port over everything from the old version
         public bool onOff = true;               // on by default
-        public RaycastHit BeamLastHit;          // used by laser block for abilities
+        public RHInfo rHInfo;
         public bool BeamHitAnything;            // also used by laser block for abilities
         public Vector3 BeamLastPoint = new Vector3();
         public float beamRayLength = 500f;
@@ -135,7 +148,7 @@ namespace AdvancedLaserBlock
                 raycastCount++;
                 if (Physics.Raycast(lastPoint, lastDir, out rayHit, beamRayLength, layerMask))
                 {
-                    BeamLastHit = rayHit;
+                    rHInfo = new RHInfo(rayHit.point, rayHit.transform, rayHit.collider);
                     BeamHitAnything = true;
                     if (rayHit.transform.GetComponent<NewOpticsBlock>())
                     {
@@ -218,6 +231,7 @@ namespace AdvancedLaserBlock
                 }
             }
             Debug.LogError("Raycast count exceeded limit! Shutting down LH loop.");
+            BeamHitAnything = false;
             raycastShutdown = true;
             raycastCount = 0;
         }
