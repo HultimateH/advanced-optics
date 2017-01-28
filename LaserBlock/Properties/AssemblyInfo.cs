@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("LaserBlock")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Improved Laser Block")]
+[assembly: AssemblyDescription("Improved Laser Block for besiege")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("LaserBlock")]
+[assembly: AssemblyProduct("Improved Laser Block")]
 [assembly: AssemblyCopyright("Copyright ©  2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
