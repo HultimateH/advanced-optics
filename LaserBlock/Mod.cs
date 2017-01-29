@@ -17,12 +17,12 @@ namespace ImprovedLaserBlock
         public override string Author { get { return "wang_w571 From Pixail's code"; } }
         public override Version Version { get { return new Version(1, 1, 3, 1); } }
         protected Block laser = new Block()
-            .ID(778)
+            .ID(577)
             .BlockName("Improved Laser")
             .Obj(new List<Obj> { new Obj("LaserBlock2.obj", "LaserBlock2.png",
                 new VisualOffset(new Vector3(1f, 1f, 1f), new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, 0f)))
             })
-            .IconOffset(new Icon(new Vector3(0.95f, 0.95f, 0.95f), new Vector3(0f, 0f, 0f), new Vector3(0f, 230f, 0f)))
+            .IconOffset(new Icon(Vector3.one * 3f, new Vector3(0.2f, -0.3f, -2.15f), new Vector3(30f, 230f, 0f)))
             .Components(new Type[] { typeof(NewLaserBlock) })
             .Properties(new BlockProperties().SearchKeywords(new string[] {
                 "Laser", "Fire", "Kinetic", "Freeze", "Beam", "RIPTesseractCat"})
@@ -30,7 +30,7 @@ namespace ImprovedLaserBlock
             .Mass(0.3f)
             .ShowCollider(true)
             .CompoundCollider(new List<ColliderComposite> {
-                ColliderComposite.Box(new Vector3(0.5f, 0.5f, 1.5f), new Vector3(0f, 0f, 0.7f), new Vector3(0f, 0f, 0f))})
+                ColliderComposite.Box(new Vector3(0.5f, 0.5f, 1.1f), new Vector3(0f, 0f, 0.55f), new Vector3(0f, 0f, 0f))})
             .IgnoreIntersectionForBase()
             .NeededResources(new List<NeededResource>())
             .AddingPoints(new List<AddingPoint> {

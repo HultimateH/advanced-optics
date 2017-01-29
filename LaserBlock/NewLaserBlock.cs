@@ -21,42 +21,42 @@ namespace ImprovedLaserBlock
         //protected MSlider LaserKineticUpDownSlider;
         protected MSlider LaserKineticInOutSlider;
         // protected MSlider LaserKineticSideSlider;
-        protected MSlider LaserCosmeticThetaSlider;
-        protected MSlider LaserCosmeticAmplitudeSlider;
+        protected MSlider PenetrativeLengthMultiplier;
 
         protected MToggle LaserOnOffToggle;
         //protected MToggle LaserFastUpdateToggle; // temporary 5-tick update limit bypass
         protected MKey LaserOnOffKey;
-        protected MKey LaserAbilityKey;
 
         protected MSlider LaserWidth;
 
         // Block-specific stuff
         private bool laserOnOff;
 
+
+        public float LaserLength;
+
         public override void SafeAwake()
         {
             // Setup config window
-            LaserEditModeMenu = AddMenu("laserEditMode", 0, new List<string>() { "Ability", "Cosmetic" });
-            LaserAbilityModeMenu = AddMenu("laserAbilityMode", 0, new List<string>() { "Fire", "Kinetic", "Freeze", "Cosmetic", "Tag" });
+            LaserEditModeMenu = AddMenu("laserEditMode", 0, new List<string>() { "Ability", "Misc." });
+            LaserAbilityModeMenu = AddMenu("laserAbilityMode", 0, new List<string>() { "Fire", "Kinetic", "Freeze",  "Explosive" });
             LaserCosmeticModeMenu = AddMenu("laserCosmeticMode", 0, new List<string>() { "Off", "Trig", "Inv Trig", "Lightning" });
 
             LaserColourSlider = AddColourSlider("Beam Colour", "laserColour", Color.red);
 
-            LaserFocusSlider = AddSlider("Laser Focus", "laserFocus", 0.08f, 0.08f, 0.5f);
+            LaserFocusSlider = AddSlider("Laser Focus", "laserFocus", 1f, 0.08f, 0.5f);
             LaserLengthSlider = AddSlider("Laser Length", "laserLength", 200f, 0.1f, Mathf.Infinity);
             //LaserKineticUpDownSlider = AddSlider("Up/Down Force", "laserKinUpDown", 1f, -2.5f, 2.5f);
             LaserKineticInOutSlider = AddSlider("In/Out Force", "laserKinInOut", 0f, -2.5f, 2.5f);
             //LaserKineticSideSlider = AddSlider("Sideways Force", "laserKinSide", 0f, -2.5f, 2.5f);
-            LaserCosmeticThetaSlider = AddSlider("Theta Modifier", "laserThetaMod", 1f, 0f, 2.5f);
-            LaserCosmeticAmplitudeSlider = AddSlider("Amplitude Modifier", "laserAmpMod", 0.5f, 0f, 1.5f);
 
             //LaserFastUpdateToggle = AddToggle("Fast Raycasting", "laserFastUpdate", false);
             LaserOnOffToggle = AddToggle("Start On", "laserOnOffToggle", true);
             LaserOnOffKey = AddKey("Toggle On/Off", "laserOnOffKey", KeyCode.Y);
-            LaserAbilityKey = AddKey("Laser Ability", "laserAbilityKey", KeyCode.J);
 
             LaserWidth = AddSlider("Laser Width", "laserWidth", 0.5f, 0.001f, 10f);
+
+            PenetrativeLengthMultiplier = AddSlider("Penetrative Multiplier", "PeneMulty", 0, 0, 1);
 
             // register mode switching functions with menu delegates
             LaserEditModeMenu.ValueChanged += CycleEditMode;
@@ -65,6 +65,10 @@ namespace ImprovedLaserBlock
         }
 
         // cycle through settings etc.
+        protected override void BuildingUpdate()
+        {
+            PenetrativeLengthMultiplier.Value = Mathf.Clamp01(PenetrativeLengthMultiplier.Value);
+        }
         private void HideEverything()
         {
             LaserAbilityModeMenu.DisplayInMapper = false;
@@ -77,8 +81,6 @@ namespace ImprovedLaserBlock
             //LaserKineticUpDownSlider.DisplayInMapper = false;
             LaserKineticInOutSlider.DisplayInMapper = false;
             //LaserKineticSideSlider.DisplayInMapper = false;
-            LaserCosmeticThetaSlider.DisplayInMapper = false;
-            LaserCosmeticAmplitudeSlider.DisplayInMapper = false;
 
             //LaserFastUpdateToggle.DisplayInMapper = false;
             LaserOnOffToggle.DisplayInMapper = false;
@@ -102,13 +104,14 @@ namespace ImprovedLaserBlock
             LaserLengthSlider.DisplayInMapper = true;
             //LaserFastUpdateToggle.DisplayInMapper = true;
             LaserOnOffToggle.DisplayInMapper = true;
-            if (value == 1)
-            {
-                //LaserKineticUpDownSlider.DisplayInMapper = true;
-                LaserKineticInOutSlider.DisplayInMapper = true;
-                //LaserKineticSideSlider.DisplayInMapper = true;
-            }
-            else if (value == 4) LaserColourSlider.DisplayInMapper = true;
+            //if (value == 1)
+            //{
+            //LaserKineticUpDownSlider.DisplayInMapper = true;
+            LaserKineticInOutSlider.DisplayInMapper = value == 1;
+            //LaserKineticSideSlider.DisplayInMapper = true;
+            //}
+            /*else if (value == 4)*/
+            LaserColourSlider.DisplayInMapper = value == 4;
 
         }
         private void CycleCosmeticMode(int value)
@@ -117,14 +120,14 @@ namespace ImprovedLaserBlock
             LaserCosmeticModeMenu.DisplayInMapper = true;
             LaserFocusSlider.DisplayInMapper = true;
             LaserColourSlider.DisplayInMapper = true;
-            if (value == 1 || value == 2)
-            {
-                LaserCosmeticThetaSlider.DisplayInMapper = true;
-            }
-            if (value != 0)
-            {
-                LaserCosmeticAmplitudeSlider.DisplayInMapper = true;
-            }
+            ////if (value == 1 || value == 2)
+            ////{
+            //LaserCosmeticThetaSlider.DisplayInMapper = value == 1 || value == 2;
+            ////}
+            ////if (value != 0)
+            ////{
+            //LaserCosmeticAmplitudeSlider.DisplayInMapper = value != 0;
+            ////}
         }
 
         //protected override void OnSimulateStart()
@@ -139,18 +142,23 @@ namespace ImprovedLaserBlock
         //}
         protected override void OnSimulateUpdate()
         {
-            if (LaserOnOffKey.IsPressed)
+            if (LaserOnOffKey.IsReleased)
             {
                 laserOnOff = !laserOnOff;
             }
-            onOff = laserOnOff; // ALU operations are blazingly-fast so doing this every tick is fine
             CheckIfNeedsUpdate(); // better to optimise more expensive stuff instead (eg. trig functions)
 
+            if(!laserOnOff)
             doPassiveAbility();
-            SetBeamWidth(LaserWidth.Value);
-        }
 
-        protected void IgniteAndBreak(RHInfo rH)
+            SetBeamWidth();
+            
+        }
+        protected override void OnSimulateFixedUpdate()
+        {
+            OnSimulateUpdate();
+        }
+        protected void Ignite(RHInfo rH)
         {
             FireTag FT = rH.transform.GetComponentInChildren<FireTag>();
             if (FT) // ignite
@@ -175,34 +183,58 @@ namespace ImprovedLaserBlock
         private void doPassiveAbility()
         {
             if (!BeamHitAnything) return;
-            RHInfo rH = rHInfo;
-            switch (LaserAbilityModeMenu.Value)
+            foreach (RHInfo rHinfo in rHInfos)
             {
-                case 0: // fire
-                    IgniteAndBreak(rH);
-                    break;
-                case 1: // kinetic
-                    if (rH.rigidBody != null)
-                    {
-                        rH.rigidBody.AddForceAtPosition(LaserKineticInOutSlider.Value * (rH.rigidBody.transform.position - this.transform.position).normalized, rH.point);
-                    }
-                    //IExplosionEffect IEE = rH.transform.GetComponent<BreakOnForceNoSpawn>();
+                RHInfo rH = rHinfo;
+                if(!rH.transform)
+                {
+                    continue;
+                }
+                switch (LaserAbilityModeMenu.Value)
+                {
+                    case 0: // fire
+                        Ignite(rH);
+                        break;
+                    case 1: // kinetic
+                        if (rH.rigidBody != null)
+                        {
+                            rH.rigidBody.AddForceAtPosition(LaserKineticInOutSlider.Value * (rH.rigidBody.transform.position - this.transform.position).normalized * 1000, rH.point);
+                        }
+                        //IExplosionEffect IEE = rH.transform.GetComponent<BreakOnForceNoSpawn>();
 
-                    if (rH.transform.GetComponent<BreakOnForceNoSpawn>()) // explode stuff
-                        rH.transform.GetComponent<BreakOnForceNoSpawn>().BreakExplosion(400f, rH.point, 10f, 0f);
-                    else if (rH.transform.GetComponent<BreakOnForce>())
-                        rH.transform.GetComponent<BreakOnForce>().BreakExplosion(400f, rH.point, 10f, 0f);
-                    else if (rH.transform.GetComponent<BreakOnForceNoScaling>())
-                        rH.transform.GetComponent<BreakOnForceNoScaling>().BreakExplosion(400f, rH.point, 10f, 0f);
-                    else if (rH.transform.GetComponent<CastleWallBreak>()) // explode ipsilon stuff
-                        rH.transform.GetComponent<CastleWallBreak>().BreakExplosion(400f, rH.point, 10f, 0f);
+                        if (rH.transform.GetComponent<BreakOnForceNoSpawn>()) // explode stuff 
+                        {
+                            rH.transform.GetComponent<BreakOnForceNoSpawn>().BreakExplosion(400f, rH.point, 10f, 0f);
+                        }
+                        else if (rH.transform.GetComponent<BreakOnForce>())
+                        {
+                            rH.transform.GetComponent<BreakOnForce>().BreakExplosion(400f, rH.point, 10f, 0f);
+                        }
+                        else if (rH.transform.GetComponent<BreakOnForceNoScaling>())
+                        {
+                            rH.transform.GetComponent<BreakOnForceNoScaling>().BreakExplosion(400f, rH.point, 10f, 0f);
+                        }
+                        else if (rH.transform.GetComponent<CastleWallBreak>()) // explode ipsilon stuff
+                        {
+                            rH.transform.GetComponent<CastleWallBreak>().BreakExplosion(400f, rH.point, 10f, 0f);
+                        }
 
-                    break;
-                case 2: // freeze
-
-                    break;
-                default: // cosmetic & tag
-                    break;
+                        break;
+                    case 2: // freeze
+                        IceTag IT = rH.transform.GetComponent<IceTag>();
+                        if (IT)
+                        {
+                            IT.Freeze();
+                        }
+                        break;
+                    case 3: // bomb
+                        GameObject BOMB = (GameObject)GameObject.Instantiate(PrefabMaster.BlockPrefabs[23].gameObject, rH.point, new Quaternion());
+                        DestroyImmediate(BOMB.GetComponent<Renderer>());
+                        BOMB.GetComponent<Rigidbody>().detectCollisions = false;
+                        BOMB.GetComponentInChildren<Collider>().isTrigger = true;
+                        BOMB.GetComponent<ExplodeOnCollideBlock>().Explodey();
+                        break;
+                }
             }
         }
         public override void OnLoad(XDataHolder data)
@@ -233,34 +265,29 @@ namespace ImprovedLaserBlock
                 rigidBody = r;
             }
         }
-        
+
         private LineRenderer lr;                // laser beam
         private List<Vector3> beamDirections;   // the transforms of hit objects
         private List<Vector3> beamPoints;       // each point where the beam changes direction
-        private Transform beamFirstPoint;       // equivalent to laser emitter transform
 
         private int lLength;                    // used in calculating how many vertices the line renderer needs
         public Color colour;
         //private int updateCount = 0;
         //private List<LHData> triggers;
-        private bool raycastShutdown = false;
         //public bool skipTickLimit = false;
-        private bool timePausedFlag = true;     // true = time is flowing, false = time paused
 
         // need to port over everything from the old version
-        public bool onOff = true;               // on by default
-        public RHInfo rHInfo;
+        public List<RHInfo> rHInfos;
         public bool BeamHitAnything;            // also used by laser block for abilities
         public Vector3 BeamLastPoint = new Vector3();
-        public float beamRayLength = 500f;
 
         protected override void OnSimulateStart()
         {
-            // oh boy what a mess
-            // setup GO container
-
-            // create LineRenderer for laser
-            lr = this.gameObject.AddComponent<LineRenderer>();
+            rHInfos = new List<RHInfo>();
+            if (lr == null)
+            {
+                lr = this.gameObject.AddComponent<LineRenderer>();
+            }
             lr.material = new Material(Shader.Find("Particles/Additive"));
             lr.SetWidth(0.08f, 0.08f);
 
@@ -270,30 +297,27 @@ namespace ImprovedLaserBlock
                 Color.Lerp(ArgColour, Color.black, 0.45f));
             lr.SetVertexCount(0);
 
-            // redraw arguments (also filter checking)
-
-            // more optimisation args
-            //triggers = new List<LHData>();
+            beamDirections = new List<Vector3>();
+            beamPoints = new List<Vector3>();
+            laserOnOff = true;
         }
-        public void SetBeamWidth(float f)
+        public void SetBeamWidth()
         {
             // temporary fix for people who REALLY want to change the laser width
-            lr.SetWidth(Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * 0.08f, Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * f);
+            lr.SetWidth(Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserWidth.Value, Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserFocusSlider.Value * LaserWidth.Value);
         }
         public void CheckIfNeedsUpdate()
         {
-            if (raycastShutdown) return;
-            if (Time.timeScale == 0f) // time paused
+
+            if (!laserOnOff)
             {
-                if (!timePausedFlag) Debug.Log("time paused, not raycasting");
-                timePausedFlag = true;
-                return;
-            }
-            else if (timePausedFlag) timePausedFlag = false;
-            if (!onOff)
-            {
+                UpdateFromPoint(this.transform.TransformPoint(0, 0, 1.3f), this.transform.forward);
                 DrawBeam();
-                return;
+                SetBeamWidth();
+            }
+            else
+            {
+                lr.SetVertexCount(0);
             }
             //updateCount++;
             //if (updateCount > 5 || skipTickLimit)
@@ -323,49 +347,55 @@ namespace ImprovedLaserBlock
             Vector3 lastPoint = point;
             Vector3 lastDir = dir;
             BeamHitAnything = false;
-            foreach (RaycastHit Hito in Physics.RaycastAll(lastPoint, lastDir, beamRayLength))
+            rHInfos.Clear();
+
+            LaserLength = LaserLengthSlider.Value;
+
+            BeamHitAnything = false;
+
+            foreach (RaycastHit Hito in Physics.RaycastAll(lastPoint, lastDir, LaserLength))
             {
                 if (!Hito.collider.isTrigger)
                 {
-                    rHInfo = new RHInfo(Hito.point, Hito.transform, Hito.collider, Hito.rigidbody);
+                    rHInfos.Add(new RHInfo(Hito.point, Hito.transform, Hito.collider, Hito.rigidbody));
                     BeamHitAnything = true;
                     {
                         beamPoints.Add(Hito.point);
                         beamDirections.Add(lastDir);
-                        DrawBeam();
-                        return;
+
+                        float SqrDist = (this.transform.position - Hito.point).sqrMagnitude;
+                        if (SqrDist >= Mathf.Pow(LaserLength * PenetrativeLengthMultiplier.Value, 2))
+                        {
+                            LaserLength = Mathf.Sqrt(SqrDist);
+                        }
+                        else
+                        {
+                            LaserLength *= PenetrativeLengthMultiplier.Value;
+                        }
                     }
                 }
-                else
-                {
-                    BeamHitAnything = false;
-                    beamPoints.Add(lastPoint + lastDir * beamRayLength);
-                    beamDirections.Add(lastDir);
-                    DrawBeam();
-                    return;
-                }
             }
-            BeamHitAnything = false;
-            raycastShutdown = true;
         }
         private void DrawBeam()
         {
-            if (!onOff)
-            {
-                if (lLength != 0)
-                {
-                    lLength = 0;
-                    lr.SetVertexCount(0);
-                }
-                return;
-            }
-            lLength = beamPoints.Count;
-            lr.SetVertexCount(lLength);
-            for (int i = 0; i < lLength; i++)
-            {
-                lr.SetPosition(i, beamPoints[i]);
-            }
-            BeamLastPoint = beamPoints[beamPoints.Count - 1];
+            //if (!laserOnOff)
+            //{
+            //    if (lLength != 0)
+            //    {
+            //        lLength = 0;
+            //        lr.SetVertexCount(0);
+            //    }
+            //    return;
+            //}
+            //lLength = beamPoints.Count;
+            //lr.SetVertexCount(lLength);
+            //for (int i = 0; i < lLength; i++)
+            //{
+            //    lr.SetPosition(i, beamPoints[i]);
+            //}
+            //BeamLastPoint = beamPoints[beamPoints.Count - 1];
+            lr.SetVertexCount(2);
+            lr.SetPositions(new Vector3[] { this.transform.position + this.transform.forward * 0.8f, this.transform.position + this.transform.forward * LaserLength });
         }
     }
 }
