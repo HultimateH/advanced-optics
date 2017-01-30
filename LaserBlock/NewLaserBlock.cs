@@ -39,7 +39,7 @@ namespace ImprovedLaserBlock
         {
             // Setup config window
             LaserEditModeMenu = AddMenu("laserEditMode", 0, new List<string>() { "Ability", "Misc." });
-            LaserAbilityModeMenu = AddMenu("laserAbilityMode", 0, new List<string>() { "Fire", "Kinetic", "Freeze",  "Explosive" });
+            LaserAbilityModeMenu = AddMenu("laserAbilityMode", 0, new List<string>() { "Fire", "Kinetic", "Freeze", "Explosive" });
             LaserCosmeticModeMenu = AddMenu("laserCosmeticMode", 0, new List<string>() { "Off", "Trig", "Inv Trig", "Lightning" });
 
             LaserColourSlider = AddColourSlider("Beam Colour", "laserColour", Color.red);
@@ -68,6 +68,10 @@ namespace ImprovedLaserBlock
         protected override void BuildingUpdate()
         {
             PenetrativeLengthMultiplier.Value = Mathf.Clamp01(PenetrativeLengthMultiplier.Value);
+            LaserFocusSlider.DisplayInMapper = LaserEditModeMenu.Value == 1;
+            LaserLengthSlider.DisplayInMapper = LaserEditModeMenu.Value == 1;
+            PenetrativeLengthMultiplier.DisplayInMapper = LaserEditModeMenu.Value == 1;
+            LaserWidth.DisplayInMapper = LaserEditModeMenu.Value == 1;
         }
         private void HideEverything()
         {
@@ -148,15 +152,11 @@ namespace ImprovedLaserBlock
             }
             CheckIfNeedsUpdate(); // better to optimise more expensive stuff instead (eg. trig functions)
 
-            if(!laserOnOff)
-            doPassiveAbility();
+            if (!laserOnOff)
+                doPassiveAbility();
 
             SetBeamWidth();
-            
-        }
-        protected override void OnSimulateFixedUpdate()
-        {
-            OnSimulateUpdate();
+
         }
         protected void Ignite(RHInfo rH)
         {
@@ -186,7 +186,7 @@ namespace ImprovedLaserBlock
             foreach (RHInfo rHinfo in rHInfos)
             {
                 RHInfo rH = rHinfo;
-                if(!rH.transform)
+                if (!rH.transform)
                 {
                     continue;
                 }
@@ -218,7 +218,7 @@ namespace ImprovedLaserBlock
                         {
                             rH.transform.GetComponent<CastleWallBreak>().BreakExplosion(400f, rH.point, 10f, 0f);
                         }
-
+                        ReduceBreakForce(rH.Joint);
                         break;
                     case 2: // freeze
                         IceTag IT = rH.transform.GetComponent<IceTag>();
@@ -233,8 +233,17 @@ namespace ImprovedLaserBlock
                         BOMB.GetComponent<Rigidbody>().detectCollisions = false;
                         BOMB.GetComponentInChildren<Collider>().isTrigger = true;
                         BOMB.GetComponent<ExplodeOnCollideBlock>().Explodey();
+                        ReduceBreakForce(rH.Joint);
                         break;
                 }
+
+            }
+        }
+        public void ReduceBreakForce(ConfigurableJoint Jointo)
+        {
+            if (Jointo && Jointo.breakForce == Mathf.Infinity)
+            {
+                Jointo.breakForce = 50000;
             }
         }
         public override void OnLoad(XDataHolder data)
@@ -257,29 +266,24 @@ namespace ImprovedLaserBlock
             public Transform transform;
             public Collider collider;
             public Rigidbody rigidBody;
-            public RHInfo(Vector3 v, Transform t, Collider c, Rigidbody r)
+            public ConfigurableJoint Joint;
+            public RHInfo(Vector3 v, Transform t, Collider c, Rigidbody r, ConfigurableJoint jjint)
             {
                 point = v;
                 transform = t;
                 collider = c;
                 rigidBody = r;
+                Joint = jjint;
             }
         }
 
         private LineRenderer lr;                // laser beam
-        private List<Vector3> beamDirections;   // the transforms of hit objects
-        private List<Vector3> beamPoints;       // each point where the beam changes direction
 
-        private int lLength;                    // used in calculating how many vertices the line renderer needs
         public Color colour;
-        //private int updateCount = 0;
-        //private List<LHData> triggers;
-        //public bool skipTickLimit = false;
 
         // need to port over everything from the old version
         public List<RHInfo> rHInfos;
         public bool BeamHitAnything;            // also used by laser block for abilities
-        public Vector3 BeamLastPoint = new Vector3();
 
         protected override void OnSimulateStart()
         {
@@ -297,9 +301,7 @@ namespace ImprovedLaserBlock
                 Color.Lerp(ArgColour, Color.black, 0.45f));
             lr.SetVertexCount(0);
 
-            beamDirections = new List<Vector3>();
-            beamPoints = new List<Vector3>();
-            laserOnOff = true;
+            laserOnOff = !LaserOnOffToggle.IsActive;
         }
         public void SetBeamWidth()
         {
@@ -330,20 +332,6 @@ namespace ImprovedLaserBlock
         }
         private void UpdateFromPoint(Vector3 point, Vector3 dir)
         {
-            int i = beamPoints.IndexOf(point);
-            //if (dir == Vector3.zero) i--; // recast from point previous to this one
-            if (i < beamPoints.Count && i >= 0)
-            {
-                beamPoints.RemoveRange(i, beamPoints.Count - i);
-                beamDirections.RemoveRange(i, beamDirections.Count - i);
-            }
-            else if (beamPoints.Count > 0)
-            {
-                beamPoints.Clear();
-                beamDirections.Clear();
-            }
-            beamPoints.Add(point);
-            beamDirections.Add(dir);
             Vector3 lastPoint = point;
             Vector3 lastDir = dir;
             BeamHitAnything = false;
@@ -357,11 +345,9 @@ namespace ImprovedLaserBlock
             {
                 if (!Hito.collider.isTrigger)
                 {
-                    rHInfos.Add(new RHInfo(Hito.point, Hito.transform, Hito.collider, Hito.rigidbody));
+                    rHInfos.Add(new RHInfo(Hito.point, Hito.transform, Hito.collider, Hito.rigidbody, Hito.transform.GetComponent<ConfigurableJoint>()));
                     BeamHitAnything = true;
                     {
-                        beamPoints.Add(Hito.point);
-                        beamDirections.Add(lastDir);
 
                         float SqrDist = (this.transform.position - Hito.point).sqrMagnitude;
                         if (SqrDist >= Mathf.Pow(LaserLength * PenetrativeLengthMultiplier.Value, 2))

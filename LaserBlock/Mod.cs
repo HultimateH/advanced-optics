@@ -25,7 +25,7 @@ namespace ImprovedLaserBlock
             .IconOffset(new Icon(Vector3.one * 3f, new Vector3(0.2f, -0.3f, -2.15f), new Vector3(30f, 230f, 0f)))
             .Components(new Type[] { typeof(NewLaserBlock) })
             .Properties(new BlockProperties().SearchKeywords(new string[] {
-                "Laser", "Fire", "Kinetic", "Freeze", "Beam", "RIPTesseractCat"})
+                "Laser", "Fire", "Kinetic", "Freeze","Explosive","Weapon", "Beam", "RIPTesseractCat"})
             )
             .Mass(0.3f)
             .ShowCollider(true)
