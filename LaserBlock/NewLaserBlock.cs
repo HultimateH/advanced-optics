@@ -12,7 +12,7 @@ namespace ImprovedLaserBlock
         // Besiege-specific stuff
         protected MMenu LaserEditModeMenu;
         protected MMenu LaserAbilityModeMenu;
-        protected MMenu LaserCosmeticModeMenu;
+        //protected MMenu LaserCosmeticModeMenu;
 
         protected MColourSlider LaserColourSlider;
 
@@ -27,25 +27,35 @@ namespace ImprovedLaserBlock
         //protected MToggle LaserFastUpdateToggle; // temporary 5-tick update limit bypass
         protected MKey LaserOnOffKey;
 
+        protected MKey BombActivateKey;
+        protected MToggle BombEffectOnOffToggle;
+        protected MSlider BombHoldTimer;
+
         protected MSlider LaserWidth;
 
         // Block-specific stuff
         private bool laserOnOff;
 
 
+        private int CountDown;
+
         public float LaserLength;
+
+        public ParticleSystemRenderer PSR;
+        public ParticleSystem PS;
+        public GameObject Especially;
+        public Light PointLight;
 
         public override void SafeAwake()
         {
             // Setup config window
             LaserEditModeMenu = AddMenu("laserEditMode", 0, new List<string>() { "Ability", "Misc." });
             LaserAbilityModeMenu = AddMenu("laserAbilityMode", 0, new List<string>() { "Fire", "Kinetic", "Freeze", "Explosive" });
-            LaserCosmeticModeMenu = AddMenu("laserCosmeticMode", 0, new List<string>() { "Off", "Trig", "Inv Trig", "Lightning" });
 
             LaserColourSlider = AddColourSlider("Beam Colour", "laserColour", Color.red);
 
             LaserFocusSlider = AddSlider("Laser Focus", "laserFocus", 1f, 0.08f, 0.5f);
-            LaserLengthSlider = AddSlider("Laser Length", "laserLength", 200f, 0.1f, Mathf.Infinity);
+            LaserLengthSlider = AddSlider("Laser Length", "laserLength", 200f, 0.1f, 1500);
             //LaserKineticUpDownSlider = AddSlider("Up/Down Force", "laserKinUpDown", 1f, -2.5f, 2.5f);
             LaserKineticInOutSlider = AddSlider("In/Out Force", "laserKinInOut", 0f, -2.5f, 2.5f);
             //LaserKineticSideSlider = AddSlider("Sideways Force", "laserKinSide", 0f, -2.5f, 2.5f);
@@ -58,10 +68,12 @@ namespace ImprovedLaserBlock
 
             PenetrativeLengthMultiplier = AddSlider("Penetrative Multiplier", "PeneMulty", 0, 0, 1);
 
+            BombActivateKey = AddKey("Deploy Bomb", "DoBomb", KeyCode.K);
+            BombEffectOnOffToggle = AddToggle("Use Shrinking Effect", "UseShrink", true);
+            BombHoldTimer = AddSlider("Shrinking Countdown", "CountDown", 2.3f, 0, 10f);
+
             // register mode switching functions with menu delegates
-            LaserEditModeMenu.ValueChanged += CycleEditMode;
             LaserAbilityModeMenu.ValueChanged += CycleAbilityMode;
-            LaserCosmeticModeMenu.ValueChanged += CycleCosmeticMode;
         }
 
         // cycle through settings etc.
@@ -72,11 +84,21 @@ namespace ImprovedLaserBlock
             LaserLengthSlider.DisplayInMapper = LaserEditModeMenu.Value == 1;
             PenetrativeLengthMultiplier.DisplayInMapper = LaserEditModeMenu.Value == 1;
             LaserWidth.DisplayInMapper = LaserEditModeMenu.Value == 1;
+            LaserColourSlider.DisplayInMapper = LaserEditModeMenu.Value == 1;
+            LaserOnOffToggle.DisplayInMapper = LaserEditModeMenu.Value == 1;
+
+
+            LaserAbilityModeMenu.DisplayInMapper = LaserEditModeMenu.Value == 0;
+
+            LaserKineticInOutSlider.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 2;
+
+            BombActivateKey.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 3;
+            BombEffectOnOffToggle.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 3;
+            BombHoldTimer.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 3;
         }
         private void HideEverything()
         {
             LaserAbilityModeMenu.DisplayInMapper = false;
-            LaserCosmeticModeMenu.DisplayInMapper = false;
 
             LaserColourSlider.DisplayInMapper = false;
 
@@ -89,18 +111,7 @@ namespace ImprovedLaserBlock
             //LaserFastUpdateToggle.DisplayInMapper = false;
             LaserOnOffToggle.DisplayInMapper = false;
         }
-        private void CycleEditMode(int value)
-        {
-            switch (value)
-            {
-                case 0:
-                    CycleAbilityMode(LaserAbilityModeMenu.Value);
-                    break;
-                case 1:
-                    CycleCosmeticMode(LaserCosmeticModeMenu.Value);
-                    break;
-            }
-        }
+        
         private void CycleAbilityMode(int value)
         {
             HideEverything();
@@ -118,21 +129,6 @@ namespace ImprovedLaserBlock
             LaserColourSlider.DisplayInMapper = value == 4;
 
         }
-        private void CycleCosmeticMode(int value)
-        {
-            HideEverything();
-            LaserCosmeticModeMenu.DisplayInMapper = true;
-            LaserFocusSlider.DisplayInMapper = true;
-            LaserColourSlider.DisplayInMapper = true;
-            ////if (value == 1 || value == 2)
-            ////{
-            //LaserCosmeticThetaSlider.DisplayInMapper = value == 1 || value == 2;
-            ////}
-            ////if (value != 0)
-            ////{
-            //LaserCosmeticAmplitudeSlider.DisplayInMapper = value != 0;
-            ////}
-        }
 
         //protected override void OnSimulateStart()
         //{
@@ -144,6 +140,53 @@ namespace ImprovedLaserBlock
         //    laserHandler.beamRayLength = LaserLengthSlider.Value;
         //    laserHandler.onOff = laserOnOff;
         //}
+        protected override void OnSimulateStart()
+        {
+            //Debug.Log(PrefabMaster.BlockPrefabs[47].gameObject.GetComponentInChildren<ParticleSystemRenderer>().material.shader.name);
+            rHInfos = new List<RHInfo>();
+            if (lr == null)
+            {
+                lr = this.gameObject.AddComponent<LineRenderer>();
+            }
+            lr.material = new Material(Shader.Find("Particles/Additive"));
+            lr.SetWidth(0.08f, 0.08f);
+
+            Color ArgColour = LaserColourSlider.Value;
+
+            lr.SetColors(Color.Lerp(ArgColour, Color.black, 0.45f),
+                Color.Lerp(ArgColour, Color.clear, 0.2f));
+            lr.SetVertexCount(0);
+
+            Especially = new GameObject("TheThings");
+            Especially.transform.SetParent(this.transform);
+            Especially.transform.localPosition = Vector3.forward * 1.1f;
+            Especially.transform.LookAt(this.transform.position);
+
+            laserOnOff = !LaserOnOffToggle.IsActive;
+            PointLight = Especially.AddComponent<Light>();
+            PointLight.color = LaserColourSlider.Value;
+            PointLight.intensity = 3 * Math.Max(0.25f, PenetrativeLengthMultiplier.Value);
+            PointLight.range = Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserWidth.Value * 3f;
+            PointLight.shadows = LightShadows.Soft;
+            if (LaserAbilityModeMenu.Value == 3 && !PSR)
+            {
+                PS = Especially.AddComponent<ParticleSystem>();
+                ParticleSystem.Particle NewParticle = new ParticleSystem.Particle();
+                PS.startSize = 0.2f;
+                PS.startColor = new Color(LaserColourSlider.Value.r, LaserColourSlider.Value.g, LaserColourSlider.Value.b, 0.5f);
+                PS.startLifetime = BombHoldTimer.Value * 0.45f;
+                PS.startSpeed = -0.5f;
+                PS.scalingMode = ParticleSystemScalingMode.Shape;
+                PS.SetParticles(new ParticleSystem.Particle[] { NewParticle }, 1);
+                ParticleSystem.Burst BUTS = new ParticleSystem.Burst(10, 10, 1000);
+                //PS.emission.SetBursts(new ParticleSystem.Burst[] { BUTS }, 1);
+                //PS.Simulate(10f);
+                //PS.Play();
+                PSR = Especially.GetComponent<ParticleSystemRenderer>();
+                PSR.material = new Material(Shader.Find("Particles/Alpha Blended"));
+                PSR.material.mainTexture = (resources["LaserParticle.png"].texture);
+            }
+        }
         protected override void OnSimulateUpdate()
         {
             if (LaserOnOffKey.IsReleased)
@@ -153,9 +196,29 @@ namespace ImprovedLaserBlock
             CheckIfNeedsUpdate(); // better to optimise more expensive stuff instead (eg. trig functions)
 
             if (!laserOnOff)
+            {
                 doPassiveAbility();
+            }
 
             SetBeamWidth();
+
+        }
+        protected override void OnSimulateFixedUpdate()
+        {
+            if (LaserAbilityModeMenu.Value == 3 && BombActivateKey.IsDown)
+            {
+                CountDown = (int)Mathf.Min(CountDown + 1, BombHoldTimer.Value * 100 + 1);
+                SetLights();
+                Vector3 RandomPoint = EulerToDirection(UnityEngine.Random.Range(-360, 360), UnityEngine.Random.Range(-360, 360));
+                PS.Emit(RandomPoint * PS.startLifetime * 2, -RandomPoint * 2,0.2f, PS.startLifetime,PS.startColor);
+            }
+            else
+            {
+                CountDown = (int)(CountDown * 0.9f);
+                SetLights();
+            }
+            PS.maxParticles = 1000;
+            PS.time -= Time.fixedDeltaTime * 2;
 
         }
         protected void Ignite(RHInfo rH)
@@ -183,6 +246,7 @@ namespace ImprovedLaserBlock
         private void doPassiveAbility()
         {
             if (!BeamHitAnything) return;
+            if (LaserAbilityModeMenu.Value == 3 && (CountDown < BombHoldTimer.Value * 100 || !BombActivateKey.IsDown)) return;
             foreach (RHInfo rHinfo in rHInfos)
             {
                 RHInfo rH = rHinfo;
@@ -238,6 +302,7 @@ namespace ImprovedLaserBlock
                 }
 
             }
+            CountDown = 0;
         }
         public void ReduceBreakForce(ConfigurableJoint Jointo)
         {
@@ -249,7 +314,6 @@ namespace ImprovedLaserBlock
         public override void OnLoad(XDataHolder data)
         {
             LoadMapperValues(data);
-            CycleEditMode(LaserEditModeMenu.Value);
         }
         public override void OnSave(XDataHolder data)
         {
@@ -285,28 +349,18 @@ namespace ImprovedLaserBlock
         public List<RHInfo> rHInfos;
         public bool BeamHitAnything;            // also used by laser block for abilities
 
-        protected override void OnSimulateStart()
-        {
-            rHInfos = new List<RHInfo>();
-            if (lr == null)
-            {
-                lr = this.gameObject.AddComponent<LineRenderer>();
-            }
-            lr.material = new Material(Shader.Find("Particles/Additive"));
-            lr.SetWidth(0.08f, 0.08f);
 
-            Color ArgColour = LaserColourSlider.Value;
-
-            lr.SetColors(Color.Lerp(ArgColour, Color.black, 0.45f),
-                Color.Lerp(ArgColour, Color.black, 0.45f));
-            lr.SetVertexCount(0);
-
-            laserOnOff = !LaserOnOffToggle.IsActive;
-        }
         public void SetBeamWidth()
         {
             // temporary fix for people who REALLY want to change the laser width
-            lr.SetWidth(Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserWidth.Value, Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserFocusSlider.Value * LaserWidth.Value);
+            lr.SetWidth(
+                Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserWidth.Value * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? 1 - (CountDown / (BombHoldTimer.Value * 100)) : 1), 2),
+                Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserFocusSlider.Value * LaserWidth.Value * (LaserLength / LaserLengthSlider.Value) * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? 1 - (CountDown / (BombHoldTimer.Value * 100)) : 1), 2));
+        }
+        public void SetLights()
+        {
+            PointLight.intensity = 3 * Math.Max(0.25f, PenetrativeLengthMultiplier.Value) * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? (CountDown / (BombHoldTimer.Value * 100)) * 5 : 1), 2);
+            PointLight.range = 3 * Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserWidth.Value * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? (CountDown / (BombHoldTimer.Value * 100)) * 5 : 1), 2);
         }
         public void CheckIfNeedsUpdate()
         {
@@ -382,6 +436,14 @@ namespace ImprovedLaserBlock
             //BeamLastPoint = beamPoints[beamPoints.Count - 1];
             lr.SetVertexCount(2);
             lr.SetPositions(new Vector3[] { this.transform.position + this.transform.forward * 0.8f, this.transform.position + this.transform.forward * LaserLength });
+        }
+
+        
+        Vector3 EulerToDirection(float Elevation, float Heading)
+        {
+            float elevation = Elevation * Mathf.Deg2Rad;
+            float heading = Heading * Mathf.Deg2Rad;
+            return new Vector3(Mathf.Cos(elevation) * Mathf.Sin(heading), Mathf.Sin(elevation), Mathf.Cos(elevation) * Mathf.Cos(heading));
         }
     }
 }

@@ -10,8 +10,6 @@ namespace ImprovedLaserBlock
 
     public class LaserMod : BlockMod
     {
-        /// ModLoader stuff
-        /// Set name, author and so on for the blockloader to know what you made.
         public override string Name { get { return "ImprovedLaserMod"; } }
         public override string DisplayName { get { return "Improved Laser Mod"; } }
         public override string Author { get { return "wang_w571 From Pixail's code"; } }
@@ -28,11 +26,14 @@ namespace ImprovedLaserBlock
                 "Laser", "Fire", "Kinetic", "Freeze","Explosive","Weapon", "Beam", "RIPTesseractCat"})
             )
             .Mass(0.3f)
-            .ShowCollider(true)
+            .ShowCollider(false)
             .CompoundCollider(new List<ColliderComposite> {
                 ColliderComposite.Box(new Vector3(0.5f, 0.5f, 1.1f), new Vector3(0f, 0f, 0.55f), new Vector3(0f, 0f, 0f))})
             .IgnoreIntersectionForBase()
-            .NeededResources(new List<NeededResource>())
+            .NeededResources(new List<NeededResource>()
+            {
+                new NeededResource(ResourceType.Texture,"LaserParticle.png")
+            })
             .AddingPoints(new List<AddingPoint> {
                 new BasePoint(false, true).Motionable(false,false,false).SetStickyRadius(0.5f)});
         public override void OnLoad()
