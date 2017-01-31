@@ -183,7 +183,8 @@ namespace ImprovedLaserBlock
                 //PS.Simulate(10f);
                 //PS.Play();
                 PSR = Especially.GetComponent<ParticleSystemRenderer>();
-                PSR.material = new Material(Shader.Find("Particles/Alpha Blended"));
+                //PSR.material = new Material(Shader.Find("Particles/Alpha Blended"));
+                PSR.material = new Material(Shader.Find("Particles/Additive"));
                 PSR.material.mainTexture = (resources["LaserParticle.png"].texture);
             }
         }
