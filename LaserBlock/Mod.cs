@@ -13,10 +13,13 @@ namespace ImprovedLaserBlock
         public override string Name { get { return "ImprovedLaserMod"; } }
         public override string DisplayName { get { return "Improved Laser Mod"; } }
         public override string Author { get { return "wang_w571 From Pixail's code"; } }
-        public override Version Version { get { return new Version(1, 1, 3, 1); } }
-        protected Block laser = new Block()
+        public override Version Version { get { return new Version(1,0); } }
+        public override void OnLoad()
+        {
+            Block laser = new Block()
             .ID(577)
-            .BlockName("Improved Laser")
+            .BlockName(!Configuration.GetBool("UseChinese", false) ? "Improved Laser Emitter" : "改进型激光发生器")
+            //.BlockName("Improved Laser Emitter" )
             .Obj(new List<Obj> { new Obj("LaserBlock2.obj", "LaserBlock2.png",
                 new VisualOffset(new Vector3(1f, 1f, 1f), new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, 0f)))
             })
@@ -36,9 +39,9 @@ namespace ImprovedLaserBlock
             })
             .AddingPoints(new List<AddingPoint> {
                 new BasePoint(false, true).Motionable(false,false,false).SetStickyRadius(0.5f)});
-        public override void OnLoad()
-        {
+
             LoadBlock(laser);
+            
         }
     }
 }

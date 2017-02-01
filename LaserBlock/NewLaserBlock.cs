@@ -30,6 +30,7 @@ namespace ImprovedLaserBlock
         protected MKey BombActivateKey;
         protected MToggle BombEffectOnOffToggle;
         protected MSlider BombHoldTimer;
+        protected MMenu BombChargingPosition;
 
         protected MSlider LaserWidth;
 
@@ -38,16 +39,61 @@ namespace ImprovedLaserBlock
 
 
         private int CountDown;
+        private int AlreadyCountDown;
 
         public float LaserLength;
+
+        private float Multiplier;
+        private float SqrtMultiplier;
+
 
         public ParticleSystemRenderer PSR;
         public ParticleSystem PS;
         public GameObject Especially;
         public Light PointLight;
 
+        delegate void Init();
+
         public override void SafeAwake()
         {
+            Init init = Configuration.GetBool("UseChinese", false) ? new Init(ChineseInitialize) : new Init(EnglishInitialize);
+            init();
+        }
+
+        void ChineseInitialize()
+        {
+
+            // Setup config window
+            LaserEditModeMenu = AddMenu("laserEditMode", 0, new List<string>() { "功能", "通用设置" });
+            LaserAbilityModeMenu = AddMenu("laserAbilityMode", 0, new List<string>() { "点燃", "施力", "冰冻", "爆破" });
+
+            LaserColourSlider = AddColourSlider("激光颜色", "laserColour", Color.red);
+
+            LaserFocusSlider = AddSlider("聚焦乘子", "laserFocus", 1f, 0.08f, 0.5f);
+            LaserLengthSlider = AddSlider("长度", "laserLength", 200f, 0.1f, 1500);
+            LaserKineticInOutSlider = AddSlider("施力力度", "laserKinInOut", 0f, -2.5f, 2.5f);
+
+            //LaserFastUpdateToggle = AddToggle("Fast Raycasting", "laserFastUpdate", false);
+            LaserOnOffToggle = AddToggle("默认开启", "laserOnOffToggle", true);
+            LaserOnOffKey = AddKey("发射激光", "laserOnOffKey", KeyCode.Y);
+
+            LaserWidth = AddSlider("宽度", "laserWidth", 0.5f, 0.001f, 10f);
+
+            PenetrativeLengthMultiplier = AddSlider("穿透损失乘子", "PeneMulty", 0, 0, 1);
+
+            BombActivateKey = AddKey("准备爆炸", "DoBomb", KeyCode.K);
+            BombEffectOnOffToggle = AddToggle("使用特效", "UseShrink", true);
+            BombHoldTimer = AddSlider("爆炸间隔/蓄能时间", "CountDown", 2.3f, 0, 10f);
+
+            BombChargingPosition = AddMenu("ChargePosition", 0, new List<string> { "所有点添加粒子", "发射端添加粒子效果", "接触点添加粒子效果", "无粒子效果" });
+
+            // register mode switching functions with menu delegates
+            LaserAbilityModeMenu.ValueChanged += CycleAbilityMode;
+        }
+
+        void EnglishInitialize()
+        {
+
             // Setup config window
             LaserEditModeMenu = AddMenu("laserEditMode", 0, new List<string>() { "Ability", "Misc." });
             LaserAbilityModeMenu = AddMenu("laserAbilityMode", 0, new List<string>() { "Fire", "Kinetic", "Freeze", "Explosive" });
@@ -62,7 +108,7 @@ namespace ImprovedLaserBlock
 
             //LaserFastUpdateToggle = AddToggle("Fast Raycasting", "laserFastUpdate", false);
             LaserOnOffToggle = AddToggle("Start On", "laserOnOffToggle", true);
-            LaserOnOffKey = AddKey("Toggle On/Off", "laserOnOffKey", KeyCode.Y);
+            LaserOnOffKey = AddKey("On/Off", "laserOnOffKey", KeyCode.Y);
 
             LaserWidth = AddSlider("Laser Width", "laserWidth", 0.5f, 0.001f, 10f);
 
@@ -71,6 +117,8 @@ namespace ImprovedLaserBlock
             BombActivateKey = AddKey("Deploy Bomb", "DoBomb", KeyCode.K);
             BombEffectOnOffToggle = AddToggle("Use Shrinking Effect", "UseShrink", true);
             BombHoldTimer = AddSlider("Shrinking Countdown", "CountDown", 2.3f, 0, 10f);
+
+            BombChargingPosition = AddMenu("ChargePosition", 0, new List<string> { "All have particles", "Only Laser Block have particles", "Only Intersection have particles", "None" });
 
             // register mode switching functions with menu delegates
             LaserAbilityModeMenu.ValueChanged += CycleAbilityMode;
@@ -88,13 +136,15 @@ namespace ImprovedLaserBlock
             LaserOnOffToggle.DisplayInMapper = LaserEditModeMenu.Value == 1;
 
 
+
             LaserAbilityModeMenu.DisplayInMapper = LaserEditModeMenu.Value == 0;
 
-            LaserKineticInOutSlider.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 2;
+            LaserKineticInOutSlider.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 1;
 
             BombActivateKey.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 3;
             BombEffectOnOffToggle.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 3;
             BombHoldTimer.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 3;
+            BombChargingPosition.DisplayInMapper = LaserEditModeMenu.Value == 0 && LaserAbilityModeMenu.Value == 3 && BombEffectOnOffToggle.IsActive;
         }
         private void HideEverything()
         {
@@ -111,7 +161,7 @@ namespace ImprovedLaserBlock
             //LaserFastUpdateToggle.DisplayInMapper = false;
             LaserOnOffToggle.DisplayInMapper = false;
         }
-        
+
         private void CycleAbilityMode(int value)
         {
             HideEverything();
@@ -130,19 +180,8 @@ namespace ImprovedLaserBlock
 
         }
 
-        //protected override void OnSimulateStart()
-        //{
-        //    laserOnOff = LaserOnOffToggle.IsActive;
-        //    laserHandler = this.gameObject.AddComponent<LaserScript>();
-        //    Debug.Log("Ho");
-        //    laserHandler.SetBeamWidth(LaserFocusSlider.Value);
-        //    //laserHandler.skipTickLimit = LaserFastUpdateToggle.IsActive;
-        //    laserHandler.beamRayLength = LaserLengthSlider.Value;
-        //    laserHandler.onOff = laserOnOff;
-        //}
         protected override void OnSimulateStart()
         {
-            //Debug.Log(PrefabMaster.BlockPrefabs[47].gameObject.GetComponentInChildren<ParticleSystemRenderer>().material.shader.name);
             rHInfos = new List<RHInfo>();
             if (lr == null)
             {
@@ -178,10 +217,19 @@ namespace ImprovedLaserBlock
                 PS.startSpeed = -0.5f;
                 PS.scalingMode = ParticleSystemScalingMode.Shape;
                 PS.SetParticles(new ParticleSystem.Particle[] { NewParticle }, 1);
-                ParticleSystem.Burst BUTS = new ParticleSystem.Burst(10, 10, 1000);
-                //PS.emission.SetBursts(new ParticleSystem.Burst[] { BUTS }, 1);
-                //PS.Simulate(10f);
-                //PS.Play();
+
+                ParticleSystem.ColorOverLifetimeModule PSCOLM = PS.colorOverLifetime;
+                PSCOLM.color = new Gradient() { alphaKeys = new GradientAlphaKey[] { new GradientAlphaKey(0, 0), new GradientAlphaKey(0.8f, 0.2f), new GradientAlphaKey(1, 1) }, colorKeys = new GradientColorKey[] { new GradientColorKey(PS.startColor, 0), new GradientColorKey(PS.startColor, 1) } };
+                PSCOLM.enabled = true;
+
+                ParticleSystem.InheritVelocityModule PSIV = PS.inheritVelocity;
+                PSIV.enabled = true;
+                PSIV.mode = ParticleSystemInheritVelocityMode.Initial;
+
+                PS.simulationSpace = ParticleSystemSimulationSpace.World;
+
+                //ParticleSystem.Burst BUTS = new ParticleSystem.Burst(10, 10, 1000);
+
                 PSR = Especially.GetComponent<ParticleSystemRenderer>();
                 //PSR.material = new Material(Shader.Find("Particles/Alpha Blended"));
                 PSR.material = new Material(Shader.Find("Particles/Additive"));
@@ -209,16 +257,28 @@ namespace ImprovedLaserBlock
             if (LaserAbilityModeMenu.Value == 3 && BombActivateKey.IsDown)
             {
                 CountDown = (int)Mathf.Min(CountDown + 1, BombHoldTimer.Value * 100 + 1);
+                AlreadyCountDown = (int)Mathf.Min(AlreadyCountDown + 1, BombHoldTimer.Value * 100 + 1);
                 SetLights();
-                Vector3 RandomPoint = EulerToDirection(UnityEngine.Random.Range(-360, 360), UnityEngine.Random.Range(-360, 360));
-                PS.Emit(RandomPoint * PS.startLifetime * 2, -RandomPoint * 2,0.2f, PS.startLifetime,PS.startColor);
+                if (BombEffectOnOffToggle.IsActive && BombChargingPosition.Value != 2 && BombChargingPosition.Value != 3)
+                {
+                    Vector3 RandomPoint = EulerToDirection(UnityEngine.Random.Range(-360, 360), UnityEngine.Random.Range(-360, 360));
+                    Multiplier = AlreadyCountDown / (BombHoldTimer.Value * 100);
+                    SqrtMultiplier = Mathf.Sqrt(Multiplier);
+                    PS.Emit(
+                        Especially.transform.position + (RandomPoint * PS.startLifetime * 2 * Multiplier),
+                        -RandomPoint * 2 * Multiplier * Multiplier + this.Rigidbody.velocity,
+                        0.2f * Multiplier * Multiplier,
+                        PS.startLifetime * SqrtMultiplier,
+                        new Color(PS.startColor.r, PS.startColor.g, PS.startColor.b, 1));
+                }
             }
             else
             {
                 CountDown = (int)(CountDown * 0.9f);
+                AlreadyCountDown = (int)(AlreadyCountDown * 0.9f);
                 SetLights();
             }
-            PS.maxParticles = 1000;
+            PS.maxParticles = 100000;
             PS.time -= Time.fixedDeltaTime * 2;
 
         }
@@ -247,7 +307,7 @@ namespace ImprovedLaserBlock
         private void doPassiveAbility()
         {
             if (!BeamHitAnything) return;
-            if (LaserAbilityModeMenu.Value == 3 && (CountDown < BombHoldTimer.Value * 100 || !BombActivateKey.IsDown)) return;
+
             foreach (RHInfo rHinfo in rHInfos)
             {
                 RHInfo rH = rHinfo;
@@ -293,6 +353,18 @@ namespace ImprovedLaserBlock
                         }
                         break;
                     case 3: // bomb
+                        if (BombEffectOnOffToggle.IsActive && BombChargingPosition.Value != 1 && BombChargingPosition.Value != 3)
+                        {
+                            Vector3 POS = rH.point;
+                            Vector3 RandomPoint = EulerToDirection(UnityEngine.Random.Range(-360, 360), UnityEngine.Random.Range(-360, 360));
+                            PS.Emit(
+                                POS + (RandomPoint * PS.startLifetime * 2 * Multiplier),
+                                (-RandomPoint * 2 * Multiplier * Multiplier),
+                                0.2f * Multiplier,
+                                PS.startLifetime * SqrtMultiplier,
+                                new Color(PS.startColor.r, PS.startColor.g, PS.startColor.b, 1));
+                        }
+                        if (LaserAbilityModeMenu.Value == 3 && (CountDown < BombHoldTimer.Value * 100 || !BombActivateKey.IsDown)) continue;
                         GameObject BOMB = (GameObject)GameObject.Instantiate(PrefabMaster.BlockPrefabs[23].gameObject, rH.point, new Quaternion());
                         DestroyImmediate(BOMB.GetComponent<Renderer>());
                         BOMB.GetComponent<Rigidbody>().detectCollisions = false;
@@ -301,8 +373,8 @@ namespace ImprovedLaserBlock
                         ReduceBreakForce(rH.Joint);
                         break;
                 }
-
             }
+            if (LaserAbilityModeMenu.Value == 3 && (CountDown < BombHoldTimer.Value * 100 || !BombActivateKey.IsDown)) return;
             CountDown = 0;
         }
         public void ReduceBreakForce(ConfigurableJoint Jointo)
@@ -360,8 +432,8 @@ namespace ImprovedLaserBlock
         }
         public void SetLights()
         {
-            PointLight.intensity = 3 * Math.Max(0.25f, PenetrativeLengthMultiplier.Value) * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? (CountDown / (BombHoldTimer.Value * 100)) * 5 : 1), 2);
-            PointLight.range = 3 * Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserWidth.Value * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? (CountDown / (BombHoldTimer.Value * 100)) * 5 : 1), 2);
+            PointLight.intensity = 3 * Math.Max(0.25f, PenetrativeLengthMultiplier.Value) + 5 * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? (CountDown / (BombHoldTimer.Value * 100)) : 0), 2);
+            PointLight.range = 3 * Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserWidth.Value + 5 * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? (CountDown / (BombHoldTimer.Value * 100)) : 0), 2);
         }
         public void CheckIfNeedsUpdate()
         {
@@ -439,7 +511,7 @@ namespace ImprovedLaserBlock
             lr.SetPositions(new Vector3[] { this.transform.position + this.transform.forward * 0.8f, this.transform.position + this.transform.forward * LaserLength });
         }
 
-        
+
         Vector3 EulerToDirection(float Elevation, float Heading)
         {
             float elevation = Elevation * Mathf.Deg2Rad;
