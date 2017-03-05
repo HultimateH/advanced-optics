@@ -13,7 +13,7 @@ namespace ImprovedLaserBlock
         public override string Name { get { return "ImprovedLaserMod"; } }
         public override string DisplayName { get { return "Improved Laser Mod"; } }
         public override string Author { get { return "wang_w571 From Pixail's code"; } }
-        public override Version Version { get { return new Version(1,0); } }
+        public override Version Version { get { return new Version(1,5); } }
         public override void OnLoad()
         {
             Block laser = new Block()

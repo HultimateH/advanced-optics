@@ -39,7 +39,7 @@ namespace ImprovedLaserBlock
         protected MSlider LaserWidth;
 
         // Block-specific stuff
-        private bool laserOnOff;
+        private bool laserAtOff;
 
         private int CountDown;
         private int AlreadyCountDown;
@@ -248,7 +248,7 @@ namespace ImprovedLaserBlock
 
 
 
-            laserOnOff = !LaserOnOffToggle.IsActive;
+            laserAtOff = !LaserOnOffToggle.IsActive;
 
             PointLight = Especially.AddComponent<Light>();
             PointLight.color = LaserColourSlider.Value;
@@ -282,17 +282,16 @@ namespace ImprovedLaserBlock
         }
         protected override void OnSimulateUpdate()
         {
+            laserAtOff = HoldingToEmit.IsActive ? !LaserOnOffKey.IsDown : laserAtOff;
             if (LaserOnOffKey.IsReleased)
             {
-                laserOnOff = HoldingToEmit.IsActive ?
-                    true : !laserOnOff;
+                laserAtOff = HoldingToEmit.IsActive ? true : !laserAtOff;
             }
-            laserOnOff = HoldingToEmit.IsActive ? !LaserOnOffKey.IsDown : laserOnOff;
 
-            PointLight.enabled = !laserOnOff;
+            PointLight.enabled = !laserAtOff;
             CINU(); // better to optimise more expensive stuff instead (eg. trig functions)
 
-            if (!laserOnOff)
+            if (!laserAtOff)
             {
                 doPassiveAbility();
             }
@@ -300,7 +299,7 @@ namespace ImprovedLaserBlock
         }
         protected override void OnSimulateFixedUpdate()
         {
-            if (LaserAbilityModeMenu != null && LaserAbilityModeMenu.Value == 3)
+            if (LaserAbilityModeMenu != null && LaserAbilityModeMenu.Value == 3 && !laserAtOff)
             {
                 if (BombActivateKey.IsDown)
                 {
@@ -479,7 +478,7 @@ namespace ImprovedLaserBlock
                 new Vector3[] {
                 point,
                     //Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * LaserWidth.Value * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? 1 - (CountDown / (BombHoldTimer.Value * 100)) : 1), 2),
-                point + this.transform.forward * LaserLength 
+                point + this.transform.forward *  ( !laserAtOff? LaserLength :0)
                     //Mathf.Max(this.transform.localScale.x, this.transform.localScale.y) * 
                     //LaserFocusSlider.Value * 
                     //LaserWidth.Value * 
@@ -492,7 +491,6 @@ namespace ImprovedLaserBlock
                 , LaserWidth.Value / 4 * Mathf.Pow((BombEffectOnOffToggle.IsActive && LaserAbilityModeMenu.Value == 3 ? 1 - (CountDown / (BombHoldTimer.Value * 100)) : 1), 2)
                 , LaserColourSlider.Value);
 
-            CTR.crossSegments = (int)(LaserWidth.Value * 20 * 6);
         }
         public void SetLights()
         {
@@ -502,32 +500,20 @@ namespace ImprovedLaserBlock
         }
         public void CheckIfNeedsUpdate()
         {
-            
-            if (!laserOnOff)
+            SetBeam();
+            if (!laserAtOff)
             {
                 UpdateFromPoint(this.transform.TransformPoint(0, 0, 1.3f), this.transform.forward);
                 CTR.enabled = true;
-                SetBeam();
                 //DrawBeam();
             }
-            else
-            {
-                CTR.enabled = false;
-            }
-            //updateCount++;
-            //if (updateCount > 5 || skipTickLimit)
-            //{
-            //    UpdateFromPoint(beamFirstPoint.position + 0.5f * beamFirstPoint.forward - 0.8f * beamFirstPoint.up, -beamFirstPoint.up);
-            //    updateCount = 0;
-            //    return;
-            //}
 
         }
 
         public void LegacyCheckIfNeedsUpdate()
         {
 
-            if (!laserOnOff)
+            if (!laserAtOff)
             {
                 UpdateFromPoint(this.transform.TransformPoint(0, 0, 1.3f), this.transform.forward);
                 LegacyDrawBeam();
